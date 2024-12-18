@@ -3,6 +3,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
 import java.util.Stack;
 
 public class MultiplayerMenu extends JPanel implements KeyListener {
@@ -11,6 +12,7 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
     private int HostUIStage = -1;
     private int JoinUIStage = -1;
     private int joinCodeInt;
+    private int playerNum;
 
     private Stack<Integer> joinCode;
 
@@ -22,7 +24,12 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
 
         // Action listener for Host button
         Host.addActionListener(e -> {
-            GameHoster.connect();
+            try {
+                playerNum = GameHoster.connect();
+                System.out.println("Player Num "+playerNum);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
             HostUIStage = 1;
             this.remove(Host);
             this.remove(Join);
@@ -47,7 +54,7 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
         super.paintComponent(g);
         g.setColor(new Color(174, 135, 132));
         g.fillRect(0, 0, 400, 400);
-        g.setFont(new Font("Serif", Font.BOLD | Font.ITALIC, 23));
+        g.setFont(new Font("Serif", Font.BOLD | Font.ITALIC, 18));
         g.setColor(Color.BLACK);
 
         // Draw Host UI
@@ -57,7 +64,11 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
                 break;
         }
 
-        // Display the current join code visually
+        displayJoinCode(g);
+
+    }
+
+    private void displayJoinCode(Graphics g){
         if (joinCode != null && !joinCode.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             for (Integer digit : joinCode) {
@@ -72,17 +83,15 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {
+    public void keyTyped(KeyEvent e){
         char keyChar = e.getKeyChar();
-        if (Character.isDigit(keyChar) && joinCode.size()<3) {
-            // Add the number to joinCode
-            joinCode.push((int) keyChar - '0'); // Convert char digit to integer
-            System.out.println("Number pressed: " + keyChar);
-        } else if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE && !joinCode.isEmpty()) {
-            // Remove the last number when backspace is pressed
-            joinCode.pop();
-        } else if(e.getKeyChar() == KeyEvent.VK_ENTER && joinCode.size() == 3){
-
+        if (Character.isDigit(keyChar) && joinCode.size()<3) joinCode.push((int) keyChar - '0');
+        else if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE && !joinCode.isEmpty()) joinCode.pop();
+        else if(e.getKeyChar() == KeyEvent.VK_ENTER && joinCode.size() == 3){
+            try {
+                playerNum = GameJoiner.connect(String.valueOf(joinCodeInt));
+                System.out.println("Player num: "+playerNum);
+            } catch (IOException ex) {}
         }
         updateUI();
     }
@@ -107,5 +116,9 @@ public class MultiplayerMenu extends JPanel implements KeyListener {
         } catch (NumberFormatException n) {
             return -1;
         }
+    }
+
+    public int getPlayerNum(){
+        return playerNum;
     }
 }
